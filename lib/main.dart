@@ -1,9 +1,11 @@
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:gdg_dit/chatbot.dart';
 import 'auth/firebase_auth/firebase_user_provider.dart';
 import 'auth/firebase_auth/auth_util.dart';
 
@@ -17,6 +19,9 @@ import 'flutter_flow/nav/nav.dart';
 import 'index.dart';
 
 void main() async {
+  //await dotenv.load();
+  //FirebaseDatabase.instance.setLoggingEnabled(true);
+
   WidgetsFlutterBinding.ensureInitialized();
   GoRouter.optionURLReflectsImperativeAPIs = true;
   usePathUrlStrategy();
@@ -211,6 +216,86 @@ class _NavBarPageState extends State<NavBarPage> {
               ],
             ),
           )
+        ],
+      ),
+    );
+  }
+}
+
+class ChatScreen extends StatefulWidget {
+  @override
+  _ChatScreenState createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  final TextEditingController _controller = TextEditingController();
+  final List<Map<String, String>> _messages = [];
+  final ChatService _chatService = ChatService();
+
+  void _sendMessage() async {
+    if (_controller.text.trim().isEmpty) return;
+
+    final userMessage = _controller.text.trim();
+    setState(() {
+      _messages.add({'sender': 'user', 'message': userMessage});
+    });
+
+    _controller.clear();
+
+    try {
+      final botReply = await _chatService.sendMessage(userMessage);
+      setState(() {
+        _messages.add({'sender': 'bot', 'message': botReply});
+      });
+    } catch (e) {
+      setState(() {
+        _messages.add({'sender': 'bot', 'message': 'Error: ${e.toString()}'});
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Chatbot')),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final message = _messages[index];
+                return ListTile(
+                  title: Text(
+                    message['message']!,
+                    textAlign: message['sender'] == 'user'
+                        ? TextAlign.right
+                        : TextAlign.left,
+                  ),
+                );
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: InputDecoration(
+                      hintText: 'Enter your message...',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.send),
+                  onPressed: _sendMessage,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
